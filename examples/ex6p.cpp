@@ -39,9 +39,22 @@
 #include "mfem.hpp"
 #include <fstream>
 #include <iostream>
+#include <cassert>
 
 using namespace std;
 using namespace mfem;
+
+void getDeviceInfo(int rank) {
+  int nDevices;
+#ifdef MFEM_USE_CUDA 
+  cudaGetDeviceCount(&nDevices);
+  assert(nDevices);
+  cudaDeviceProp prop;
+  cudaGetDeviceProperties(&prop, 0);
+  printf("[%d] Device Name CC %s %d.%d\n",
+            rank, prop.name, prop.major, prop.minor);
+#endif
+}
 
 int main(int argc, char *argv[])
 {
@@ -50,6 +63,8 @@ int main(int argc, char *argv[])
    MPI_Init(&argc, &argv);
    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
    MPI_Comm_rank(MPI_COMM_WORLD, &myid);
+
+   getDeviceInfo(myid);
 
    // 2. Parse command-line options.
    const char *mesh_file = "../data/star.mesh";
@@ -181,6 +196,7 @@ int main(int argc, char *argv[])
    //     The refiner will call the given error estimator.
    ThresholdRefiner refiner(estimator);
    refiner.SetTotalErrorFraction(0.7);
+   refiner.PreferNonconformingRefinement();
 
    // 13. The main AMR loop. In each iteration we solve the problem on the
    //     current mesh, visualize the solution, and refine the mesh.
@@ -255,7 +271,13 @@ int main(int argc, char *argv[])
       //     estimator to obtain element errors, then it selects elements to be
       //     refined and finally it modifies the mesh. The Stop() method can be
       //     used to determine if a stopping criterion was met.
+      if (myid == 0)
+        cout << "Refine\n";
       refiner.Apply(pmesh);
+      const auto numMarked = refiner.GetNumMarkedElements();
+      cout << "[" << myid << "] Refine marked " << numMarked << " elements\n";
+      if (myid == 0)
+        cout << "Refine done\n";
       if (refiner.Stop())
       {
          if (myid == 0)
@@ -277,6 +299,8 @@ int main(int argc, char *argv[])
       //     available only for nonconforming meshes.
       if (pmesh.Nonconforming())
       {
+         if (myid == 0)
+            cout << "Balance\n";
          pmesh.Rebalance();
 
          // Update the space and the GridFunction. This time the update matrix

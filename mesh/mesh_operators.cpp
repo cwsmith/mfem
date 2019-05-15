@@ -96,6 +96,7 @@ int ThresholdRefiner::ApplyImpl(Mesh &mesh)
    MFEM_ASSERT(local_err.Size() == NE, "invalid size of local_err");
 
    double total_err = GetNorm(local_err, mesh);
+   printf("total_err %.4f total_err_goal %.4f\n", total_err, total_err_goal);
    if (total_err <= total_err_goal) { return STOP; }
 
    threshold = std::max(total_err * total_fraction *
@@ -124,6 +125,7 @@ int ThresholdRefiner::ApplyImpl(Mesh &mesh)
    }
 
    num_marked_elements = mesh.ReduceInt(marked_elements.Size());
+   printf("num_marked_elements %d\n", num_marked_elements);
    if (num_marked_elements == 0) { return STOP; }
 
    mesh.GeneralRefinement(marked_elements, non_conforming, nc_limit);
