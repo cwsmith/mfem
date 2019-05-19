@@ -22,8 +22,8 @@ CXX = g++
 MPICXX = mpicxx
 
 BASE_FLAGS  = -std=c++11
-OPTIM_FLAGS = -O3 $(BASE_FLAGS)
-DEBUG_FLAGS = -g $(XCOMPILER)-Wall $(BASE_FLAGS)
+OPTIM_FLAGS = -O2 $(BASE_FLAGS)
+DEBUG_FLAGS = -O2 -g $(XCOMPILER)-Wall $(BASE_FLAGS)
 
 # Prefixes for passing flags to the compiler and linker when using CXX or MPICXX
 CXX_XCOMPILER =
