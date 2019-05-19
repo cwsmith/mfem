@@ -4917,16 +4917,19 @@ void ParMesh::PrintInfo(std::ostream &out)
           << setw(12) << "minimum"
           << setw(12) << "average"
           << setw(12) << "maximum"
+          << setw(20) << "maximum/average"
           << setw(12) << "total" << '\n';
       out << " vertices  "
           << setw(12) << mindata[0]
           << setw(12) << sumdata[0]/NRanks
           << setw(12) << maxdata[0]
+          << setw(20) << double(maxdata[0])/(sumdata[0]/NRanks)
           << setw(12) << sumdata[0] << '\n';
       out << " edges     "
           << setw(12) << mindata[1]
           << setw(12) << sumdata[1]/NRanks
           << setw(12) << maxdata[1]
+          << setw(20) << double(maxdata[1])/(sumdata[1]/NRanks)
           << setw(12) << sumdata[1] << '\n';
       if (Dim == 3)
       {
@@ -4934,12 +4937,14 @@ void ParMesh::PrintInfo(std::ostream &out)
              << setw(12) << mindata[2]
              << setw(12) << sumdata[2]/NRanks
              << setw(12) << maxdata[2]
+             << setw(20) << double(maxdata[2])/(sumdata[2]/NRanks)
              << setw(12) << sumdata[2] << '\n';
       }
       out << " elements  "
           << setw(12) << mindata[3]
           << setw(12) << sumdata[3]/NRanks
           << setw(12) << maxdata[3]
+          << setw(20) << double(maxdata[3])/(sumdata[3]/NRanks)
           << setw(12) << sumdata[3] << '\n';
       out << " neighbors "
           << setw(12) << mindata[4]
