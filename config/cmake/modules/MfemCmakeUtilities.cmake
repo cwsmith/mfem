@@ -548,6 +548,7 @@ function(mfem_find_package Name Prefix DirVar IncSuffixes Header LibSuffixes
   endif()
 
   if (Found)
+    message("${Prefix}_INCLUDE_DIRS ${${Prefix}_INCLUDE_DIRS}")
     if (ReqLibs)
       list(REMOVE_DUPLICATES ${Prefix}_LIBRARIES)
     endif()
@@ -720,7 +721,8 @@ function(mfem_export_mk_files)
       MFEM_USE_MEMALLOC MFEM_USE_SUNDIALS MFEM_USE_MESQUITE MFEM_USE_SUITESPARSE
       MFEM_USE_SUPERLU MFEM_USE_STRUMPACK MFEM_USE_GECKO MFEM_USE_GNUTLS
       MFEM_USE_NETCDF MFEM_USE_PETSC MFEM_USE_MPFR MFEM_USE_SIDRE
-      MFEM_USE_CONDUIT MFEM_USE_PUMI MFEM_USE_CUDA MFEM_USE_OCCA MFEM_USE_RAJA)
+      MFEM_USE_CONDUIT MFEM_USE_PUMI MFEM_USE_ENGPAR
+      MFEM_USE_CUDA MFEM_USE_OCCA MFEM_USE_RAJA)
   foreach(var ${CONFIG_MK_BOOL_VARS})
     if (${var})
       set(${var} YES)
@@ -810,11 +812,39 @@ function(mfem_export_mk_files)
       endif()
     endforeach()
   endif()
+  if ("${MFEM_USE_ENGPAR}" STREQUAL "YES")
+    get_target_property(liblist ${EnGPar_LIBRARIES} INTERFACE_LINK_LIBRARIES)
+    set(engpar_dep_libs "${liblist}")
+    foreach(engparlib ${liblist})
+      get_target_property(libdeps ${engparlib} INTERFACE_LINK_LIBRARIES)
+      if (NOT "${libdeps}" MATCHES "libdeps-NOTFOUND")
+        list(APPEND engpar_dep_libs ${libdeps})
+      endif()
+    endforeach()
+    list(REMOVE_DUPLICATES engpar_dep_libs)
+    foreach(engparlib ${engpar_dep_libs})
+      unset(lib CACHE)
+      string(REGEX REPLACE "^SCOREC::" "" libname ${engparlib})
+      string(FIND "${engparlib}" ".a" staticlib)
+      string(FIND "${engparlib}" ".so" sharedlib)
+      find_library(lib ${libname} PATHS ${PUMI_DIR}/lib NO_DEFUALT_PATH)
+      if (NOT "${sharedlib}" MATCHES "-1" OR
+          NOT "${staticlib}" MATCHES "-1"   )
+        set(MFEM_EXT_LIBS "${engparlib} ${MFEM_EXT_LIBS}")
+      elseif (NOT "${lib}" MATCHES "lib-NOTFOUND")
+        set(MFEM_EXT_LIBS "${lib} ${MFEM_EXT_LIBS}")
+      elseif ("${lib}" MATCHES "lib-NOTFOUND" AND
+              NOT "${libname}" MATCHES "can" AND
+              NOT "${libname}" MATCHES "pthread")
+        message(FATAL_ERROR "EnGPar lib ${libname} not found")
+      endif()
+    endforeach()
+  endif()
   # Define the variable 'MFEM_EXT_LIBS': handle other (not PUMI) libs
   foreach(lib ${TPL_LIBRARIES})
     get_filename_component(suffix ${lib} EXT)
     # handle interfaces (e.g., SCOREC::apf)
-    if ("${lib}" MATCHES "SCOREC::.*")
+    if ("${lib}" MATCHES "SCOREC::.*" OR "${lib}" MATCHES "EnGPar::.*")
     elseif (NOT "${lib}" MATCHES "SCOREC::.*" AND "${lib}" MATCHES ".*::.*")
       message(FATAL_ERROR "***** interface lib found ... exiting *****")
       # handle static and shared libs

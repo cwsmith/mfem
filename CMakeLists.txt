@@ -151,7 +151,7 @@ if (MFEM_USE_MPI)
     set(PETSC_INCLUDE_DIRS ${PETSC_INCLUDES})
   endif()
 else()
-  set(PKGS_NEED_MPI SUPERLU PETSC STRUMPACK PUMI)
+  set(PKGS_NEED_MPI SUPERLU PETSC STRUMPACK PUMI ENGPAR)
   foreach(PKG IN LISTS PKGS_NEED_MPI)
     if (MFEM_USE_${PKG})
       message(STATUS "Disabling package ${PKG} - requires MPI")
@@ -273,6 +273,27 @@ if (MFEM_USE_PUMI)
   endif()
 endif()
 
+# ENGPAR
+if (MFEM_USE_ENGPAR)
+  find_package(SCOREC 2.1.0 COMPONENTS pcu REQUIRED CONFIG PATHS ${ENGPAR_DIR} NO_DEFAULT_PATH)
+  if (SCOREC_FOUND)
+    set(PUMI_FOUND ${SCOREC_FOUND})
+    get_target_property(PUMI_INCLUDE_DIRS
+      SCOREC::pcu INTERFACE_INCLUDE_DIRECTORIES)
+    set(PUMI_LIBRARIES SCOREC::pcu)
+  endif()
+  # If ENGPAR_DIR was specified, only link to that directory,
+  # i.e. don't link to another installation in /usr/lib by mistake
+  find_package(EnGPar REQUIRED CONFIG PATHS ${ENGPAR_DIR} NO_DEFAULT_PATH)
+  if (EnGPar_FOUND)
+    get_target_property(EnGPar_INCLUDE_DIRS EnGPar::engpar INTERFACE_INCLUDE_DIRECTORIES)
+    set(EnGPar_LIBRARIES EnGPar::engpar)
+  endif()
+  set_target_properties(EnGPar::engpar_support
+    PROPERTIES INTERFACE_LINK_LIBRARIES SCOREC::pcu)
+endif()
+
+
 # CUDA
 if (MFEM_USE_CUDA)
    set(CMAKE_CUDA_STANDARD 11)
@@ -323,7 +344,7 @@ endif()
 #    be before SuiteSparse.
 set(MFEM_TPLS MPI_CXX OPENMP BLAS LAPACK METIS HYPRE SuiteSparse SUNDIALS PETSC
     MESQUITE SuperLUDist STRUMPACK AXOM CONDUIT GECKO GNUTLS NETCDF MPFR PUMI
-    POSIXCLOCKS MFEMBacktrace ZLIB OCCA RAJA)
+    EnGPar POSIXCLOCKS MFEMBacktrace ZLIB OCCA RAJA)
 # Add all *_FOUND libraries in the variable TPL_LIBRARIES.
 set(TPL_LIBRARIES "")
 set(TPL_INCLUDE_DIRS "")

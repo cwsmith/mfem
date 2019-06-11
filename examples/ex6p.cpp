@@ -37,6 +37,8 @@
 //               We recommend viewing Example 1 before viewing this example.
 
 #include "mfem.hpp"
+#include <engpar.h>
+#include <engpar_support.h>
 #include <fstream>
 #include <iostream>
 
@@ -50,6 +52,7 @@ int main(int argc, char *argv[])
    MPI_Init(&argc, &argv);
    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
    MPI_Comm_rank(MPI_COMM_WORLD, &myid);
+   EnGPar_Initialize();
 
    // 2. Parse command-line options.
    const char *mesh_file = "../data/star.mesh";
@@ -290,6 +293,7 @@ int main(int argc, char *argv[])
       b.Update();
    }
 
+   EnGPar_Finalize();
    MPI_Finalize();
    return 0;
 }
