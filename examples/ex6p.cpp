@@ -188,7 +188,7 @@ int main(int argc, char *argv[])
 
    // 13. The main AMR loop. In each iteration we solve the problem on the
    //     current mesh, visualize the solution, and refine the mesh.
-   const int max_dofs = 100000;
+   const int max_dofs = 500;
    for (int it = 0; ; it++)
    {
       HYPRE_Int global_dofs = fespace.GlobalTrueVSize();
@@ -279,6 +279,7 @@ int main(int argc, char *argv[])
       //     available only for nonconforming meshes.
       if (pmesh.Nonconforming())
       {
+         fprintf(stderr, "mesh is non-conforming\n");
          pmesh.Rebalance();
 
          // Update the space and the GridFunction. This time the update matrix
