@@ -49,6 +49,8 @@ int* getPartition(ParMesh& m) {
    auto ncm = m.pncmesh;
    const auto comm = m.GetComm();
    const auto rank = m.GetMyRank();
+   if(!rank)
+     ncm->PrintStats();
 
    long local_elems = ncm->GetNElements();
    long total_elems = 0;
@@ -61,18 +63,22 @@ int* getPartition(ParMesh& m) {
 
    fprintf(stderr, "%d pnc_rebal 0.0\n", rank);
    agi::Ngraph* graph  = agi::createEmptyGraph();
-   std::vector<agi::gid_t> verts;
-   const int numVerts = local_elems;
-   verts.reserve(numVerts);
+   std::vector<agi::gid_t> gVerts;
+   const int numGraphVerts = local_elems;
+   gVerts.reserve(numGraphVerts);
    for (int i = 0, j = 0; i < local_elems; i++) {
      assert( ncm->ElementRank(i) == rank );
-     verts.push_back(first_elem_global + (j++));
+     gVerts.push_back(first_elem_global + (j++));
    }
-   std::vector<agi::wgt_t> weights;
-   graph->constructVerts(true,verts,weights);
-   std::vector<agi::gid_t> edges;
-   std::vector<agi::lid_t> degrees;
-   std::vector<agi::gid_t> pins;
+   std::vector<agi::wgt_t> gEdgeWeights;
+   graph->constructVerts(true,gVerts,gEdgeWeights);
+   const auto numMeshVerts = ncm->GetNVertices();
+   std::vector<agi::gid_t> gEdges(numMeshVerts);
+   std::vector<agi::lid_t> gEdgeDegrees(numMeshVerts);
+   auto meshVerts = ncm->GetVertexList();
+   printf("%d NVertices %d conforming mesh verts %zu\n", rank, numMeshVerts, meshVerts.conforming.size());
+   auto numPins = 0;
+   std::vector<agi::gid_t> gEdgePins(numPins);
 
    const int order = 1;
    const int dim = m.Dimension();
@@ -85,7 +91,7 @@ int* getPartition(ParMesh& m) {
    delete fespace;
    delete fec;
 
-   graph->constructEdges(edges,degrees,pins,weights);
+   graph->constructEdges(gEdges,gEdgeDegrees,gEdgePins,gEdgeWeights);
    //graph->constructGhosts(ghost_owners);
    fprintf(stderr, "%d pnc_rebal 0.3\n", rank);
    destroyGraph(graph);
