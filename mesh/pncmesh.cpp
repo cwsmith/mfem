@@ -1736,41 +1736,6 @@ void ParNCMesh::Rebalance()
          new_ranks[i] = Partition(first_elem_global + (j++), total_elems);
       }
    }
-   fprintf(stderr, "%d pnc_rebal first_elem_global %ld\n", MyRank, first_elem_global);
-
-   fprintf(stderr, "%d pnc_rebal 0.0\n", MyRank);
-   agi::Ngraph* graph  = agi::createEmptyGraph();
-   std::vector<agi::gid_t> verts;
-   const int numVerts = NCMesh::leaf_elements.Size();
-   verts.reserve(numVerts);
-   for (int i = 0, j = 0; i < leaf_elements.Size(); i++) {
-     if (elements[leaf_elements[i]].rank == MyRank) {
-       verts.push_back(first_elem_global + (j++));
-     }
-   }
-   std::vector<agi::wgt_t> weights;
-   graph->constructVerts(true,verts,weights);
-   std::vector<agi::gid_t> edges;
-   std::vector<agi::lid_t> degrees;
-   std::vector<agi::gid_t> pins;
-
-   const int order = 1;
-   const int dim = Dimension();
-   FiniteElementCollection* fec = new H1_FECollection(order, dim);
-   fprintf(stderr, "%d pnc_rebal 0.1\n", MyRank);
-   ParFiniteElementSpace *fespace =
-     new ParFiniteElementSpace(this, fec, dim, Ordering::byVDIM);
-   fprintf(stderr, "%d pnc_rebal 0.2\n", MyRank);
-   //GetGlobalTDofNumber();
-   delete fespace;
-   delete fec;
-
-   graph->constructEdges(edges,degrees,pins,weights);
-   //graph->constructGhosts(ghost_owners);
-   fprintf(stderr, "%d pnc_rebal 0.3\n", MyRank);
-   destroyGraph(graph);
-   fprintf(stderr, "%d pnc_rebal 0.4\n", MyRank);
-
 
    int target_elements = PartitionFirstIndex(MyRank+1, total_elems)
                          - PartitionFirstIndex(MyRank, total_elems);
