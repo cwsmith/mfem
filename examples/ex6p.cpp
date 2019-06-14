@@ -45,6 +45,55 @@
 using namespace std;
 using namespace mfem;
 
+int* getPartition(ParMesh& m) {
+   auto ncm = m.pncmesh;
+   const auto comm = m.GetComm();
+   const auto rank = m.GetMyRank();
+
+   long local_elems = ncm->GetNElements();
+   long total_elems = 0;
+   MPI_Allreduce(&local_elems, &total_elems, 1, MPI_LONG, MPI_SUM, comm);
+   long first_elem_global = 0;
+   MPI_Scan(&local_elems, &first_elem_global, 1, MPI_LONG, MPI_SUM, comm);
+   first_elem_global -= local_elems;
+
+   int* ptnVec = new int[local_elems];
+
+   fprintf(stderr, "%d pnc_rebal 0.0\n", rank);
+   agi::Ngraph* graph  = agi::createEmptyGraph();
+   std::vector<agi::gid_t> verts;
+   const int numVerts = local_elems;
+   verts.reserve(numVerts);
+   for (int i = 0, j = 0; i < local_elems; i++) {
+     assert( ncm->ElementRank(i) == rank );
+     verts.push_back(first_elem_global + (j++));
+   }
+   std::vector<agi::wgt_t> weights;
+   graph->constructVerts(true,verts,weights);
+   std::vector<agi::gid_t> edges;
+   std::vector<agi::lid_t> degrees;
+   std::vector<agi::gid_t> pins;
+
+   const int order = 1;
+   const int dim = m.Dimension();
+   FiniteElementCollection* fec = new H1_FECollection(order, dim);
+   fprintf(stderr, "%d pnc_rebal 0.1\n", rank);
+   ParFiniteElementSpace *fespace =
+     new ParFiniteElementSpace(&m, fec, dim, Ordering::byVDIM);
+   fprintf(stderr, "%d pnc_rebal 0.2\n", rank);
+   //GetGlobalTDofNumber();
+   delete fespace;
+   delete fec;
+
+   graph->constructEdges(edges,degrees,pins,weights);
+   //graph->constructGhosts(ghost_owners);
+   fprintf(stderr, "%d pnc_rebal 0.3\n", rank);
+   destroyGraph(graph);
+   fprintf(stderr, "%d pnc_rebal 0.4\n", rank);
+
+   return ptnVec;
+}
+
 int main(int argc, char *argv[])
 {
    // 1. Initialize MPI.
@@ -280,6 +329,8 @@ int main(int argc, char *argv[])
       if (pmesh.Nonconforming())
       {
          fprintf(stderr, "mesh is non-conforming\n");
+         int* partition_vector = getPartition(pmesh);
+         delete [] partition_vector;
          pmesh.Rebalance();
 
          // Update the space and the GridFunction. This time the update matrix
