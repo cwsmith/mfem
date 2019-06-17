@@ -53,6 +53,7 @@ if (MFEM_USE_MPI)
     ex19p.cpp
     ex20p.cpp
     ex21p.cpp
+    exEngparSplitp.cpp
     )
 endif()
 
