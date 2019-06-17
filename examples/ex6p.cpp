@@ -41,6 +41,7 @@
 #include <engpar_support.h>
 #include <fstream>
 #include <iostream>
+#include <map>
 
 using namespace std;
 using namespace mfem;
@@ -53,8 +54,6 @@ int* getPartition(ParMesh& m) {
      ncm->PrintStats();
 
    long local_elems = ncm->GetNElements();
-   long total_elems = 0;
-   MPI_Allreduce(&local_elems, &total_elems, 1, MPI_LONG, MPI_SUM, comm);
    long first_elem_global = 0;
    MPI_Scan(&local_elems, &first_elem_global, 1, MPI_LONG, MPI_SUM, comm);
    first_elem_global -= local_elems;
@@ -63,22 +62,19 @@ int* getPartition(ParMesh& m) {
 
    fprintf(stderr, "%d pnc_rebal 0.0\n", rank);
    agi::Ngraph* graph  = agi::createEmptyGraph();
-   std::vector<agi::gid_t> gVerts;
    const int numGraphVerts = local_elems;
-   gVerts.reserve(numGraphVerts);
+   std::vector<agi::gid_t> gVerts(numGraphVerts);
    for (int i = 0, j = 0; i < local_elems; i++) {
      assert( ncm->ElementRank(i) == rank );
      gVerts.push_back(first_elem_global + (j++));
    }
-   std::vector<agi::wgt_t> gEdgeWeights;
-   graph->constructVerts(true,gVerts,gEdgeWeights);
+   std::vector<agi::wgt_t> ignored;
+   graph->constructVerts(true,gVerts,ignored);
+
    const auto numMeshVerts = ncm->GetNVertices();
    std::vector<agi::gid_t> gEdges(numMeshVerts);
    std::vector<agi::lid_t> gEdgeDegrees(numMeshVerts);
-   auto meshVerts = ncm->GetVertexList();
-   printf("%d NVertices %d conforming mesh verts %zu\n", rank, numMeshVerts, meshVerts.conforming.size());
-   auto numPins = 0;
-   std::vector<agi::gid_t> gEdgePins(numPins);
+   printf("%d NVertices %d\n", rank, numMeshVerts);
 
    const int order = 1;
    const int dim = m.Dimension();
@@ -86,13 +82,41 @@ int* getPartition(ParMesh& m) {
    fprintf(stderr, "%d pnc_rebal 0.1\n", rank);
    ParFiniteElementSpace *fespace =
      new ParFiniteElementSpace(&m, fec, dim, Ordering::byVDIM);
+
+   auto vtxToElm = m.GetVertexToElementTable();
+   const auto numPins = vtxToElm->Size_of_connections();
+   std::vector<agi::gid_t> gEdgePins(numPins);
+
+   printf("%d vtxToElm num vtx %d\n", rank, vtxToElm->Size());
+   for(int i = 0; i< vtxToElm->Size(); i++) {
+      auto edgeId = fespace->GetLocalTDofNumber(i);
+      gEdges.push_back( edgeId );
+      auto deg = vtxToElm->RowSize(i);
+      gEdgeDegrees.push_back(deg);
+   }
+
+   std::unordered_map<agi::gid_t,agi::part_t> ghost_owners;
+
+   for(int i = 0; i< vtxToElm->Size(); i++) {
+      mfem::Array<int> pins;
+      vtxToElm->GetRow(i,pins);
+      for(int j=0; j<pins.Size(); j++) {
+        auto localElmId = pins[j];
+        auto globalElmId = first_elem_global + localElmId;
+ //       if ( ncm->IsGhost(localElmId) ) {
+ //         globalElmId = getGhostElmGlobalId(localElmId);
+ //         ghost_owners[globalElmId] = ncm->ElementRank(localElmId);
+ //       } 
+        gEdgePins.push_back(globalElmId);
+      } 
+   }
+
    fprintf(stderr, "%d pnc_rebal 0.2\n", rank);
-   //GetGlobalTDofNumber();
    delete fespace;
    delete fec;
 
-   graph->constructEdges(gEdges,gEdgeDegrees,gEdgePins,gEdgeWeights);
-   //graph->constructGhosts(ghost_owners);
+   graph->constructEdges(gEdges,gEdgeDegrees,gEdgePins,ignored);
+   graph->constructGhosts(ghost_owners);
    fprintf(stderr, "%d pnc_rebal 0.3\n", rank);
    destroyGraph(graph);
    fprintf(stderr, "%d pnc_rebal 0.4\n", rank);
