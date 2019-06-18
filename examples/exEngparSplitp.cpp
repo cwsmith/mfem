@@ -42,7 +42,6 @@
 #include <fstream>
 #include <iostream>
 #include <map>
-#include <sstream>
 #include <chrono>
 #include <thread>
 
@@ -67,11 +66,9 @@ void switchToOriginals(int split_factor, bool& isOriginal, MPI_Comm& newComm) {
 }
 
 int* getPartition(Mesh& m, MPI_Comm comm, int rank, int splitFactor) {
-   fprintf(stderr, "%d pnc_rebal 0.0\n", rank);
    bool isOriginal = false;
    MPI_Comm newComm;
    switchToOriginals(splitFactor,isOriginal,newComm);
-   fprintf(stderr, "%d pnc_rebal 0.10 isOriginal %2d\n", rank, isOriginal);
    EnGPar_Switch_Comm(newComm);
    agi::Ngraph* graph = agi::createEmptyGraph();
    long local_elems = 0;
@@ -85,7 +82,6 @@ int* getPartition(Mesh& m, MPI_Comm comm, int rank, int splitFactor) {
 
      const int rank = 0;
 
-     fprintf(stderr, "%d pnc_rebal 0.11 local_elems %3ld\n", rank, local_elems);
      std::vector<agi::gid_t> gVerts(local_elems);
      for (int i = 0; i < local_elems; i++) {
        gVerts[i] = i;
@@ -96,21 +92,16 @@ int* getPartition(Mesh& m, MPI_Comm comm, int rank, int splitFactor) {
      const auto numMeshVerts = ncm->GetNVertices();
      std::vector<agi::gid_t> gEdges(numMeshVerts);
      std::vector<agi::lid_t> gEdgeDegrees(numMeshVerts);
-     fprintf(stderr, "%d pnc_rebal 0.12 NVertices %d\n", rank, numMeshVerts);
 
      auto vtxToElm = m.GetVertexToElementTable();
      const auto numPins = vtxToElm->Size_of_connections();
      std::vector<agi::gid_t> gEdgePins;
      gEdgePins.reserve(numPins);
-
-     fprintf(stderr, "%d pnc_rebal 0.12 vtxToElm->Size() %d vtxToElm->Size_of_connections() %d\n",
-       rank, vtxToElm->Size(), numPins);
      for(int i = 0; i< vtxToElm->Size(); i++) {
         const auto globalVtxId = i;
         gEdges[i] = globalVtxId;
         const auto deg = vtxToElm->RowSize(i);
         gEdgeDegrees[i] = deg;
-        fprintf(stderr, "%d pnc_rebal 0.13 vtxToElm->RowSize(%3d) %3d\n", rank, i, deg);
      }
 
      std::unordered_map<agi::gid_t,agi::part_t> ghost_owners;
@@ -119,25 +110,16 @@ int* getPartition(Mesh& m, MPI_Comm comm, int rank, int splitFactor) {
      for(int i = 0; i < vtxToElm->Size(); i++) {
         mfem::Array<int> pins;
         vtxToElm->GetRow(i,pins);
-        ostringstream ss;
-        ss << rank << " pnc_rebal 0.14 vtx " << i << " elms(" << pins.Size() << ") ";
         for(int j=0; j<pins.Size(); j++) {
-          ss << pins[j] << " ";
           gEdgePins.push_back(pins[j]);
           pincount++;
         }
-        ss << "\n";
-        cout << ss.str();
-        fprintf(stderr, "%d pnc_rebal 0.15 gEdgePins.size() %3lu\n", rank, gEdgePins.size());
      }
 
-     fprintf(stderr, "%d pnc_rebal 0.2 pincount %3d gEdgePins.size() %3lu\n",
-       rank, pincount, gEdgePins.size());
      assert(pincount == gEdgePins.size());
 
      graph->constructEdges(gEdges,gEdgeDegrees,gEdgePins,ignored);
      graph->constructGhosts(ghost_owners);
-     fprintf(stderr, "%d pnc_rebal 0.3\n", rank);
      agi::checkValidity(graph);
    }
 
@@ -160,9 +142,7 @@ int* getPartition(Mesh& m, MPI_Comm comm, int rank, int splitFactor) {
    for (int i=0; i<local_elems; i++) {
      int new_owner = map->at(i);
      ptnVec[i] = new_owner;
-     fprintf(stderr, "%d pnc_rebal 0.31 sending %d to %d\n", rank,i,new_owner);
    }
-   fprintf(stderr, "%d pnc_rebal 0.4\n", rank);
    agi::destroyGraph(graph);
 
    //mfem wants all ranks to have the partition vector
