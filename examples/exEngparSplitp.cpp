@@ -43,6 +43,8 @@
 #include <iostream>
 #include <map>
 #include <sstream>
+#include <chrono>
+#include <thread>
 
 using namespace std;
 using namespace mfem;
@@ -141,7 +143,7 @@ int* getPartition(Mesh& m, MPI_Comm comm, int rank, int splitFactor) {
 
    double tolerance = 1.05;
    agi::etype t = 0;
-   engpar::Input* input_s = 
+   engpar::Input* input_s =
     engpar::createGlobalSplitInput(graph,newComm,MPI_COMM_WORLD,isOriginal,tolerance,t);
 
    //Perform split
@@ -179,6 +181,14 @@ int main(int argc, char *argv[])
    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
    MPI_Comm_rank(MPI_COMM_WORLD, &myid);
    EnGPar_Initialize();
+
+   // Start the timer.
+   tic_toc.Clear();
+   tic_toc.Start();
+   std::this_thread::sleep_for(std::chrono::milliseconds(10));
+   tic_toc.Stop();
+   if( !myid )
+     cout << " 10ms measured as " << tic_toc.RealTime() << " seconds\n";
 
    // 2. Parse command-line options.
    const char *mesh_file = "../data/star.mesh";
@@ -343,10 +353,13 @@ int main(int argc, char *argv[])
       fespace.GetEssentialTrueDofs(ess_bdr, ess_tdof_list);
       b.Assemble();
 
+      pmesh.PrintInfo();
       // 15. Assemble the stiffness matrix. Note that MFEM doesn't care at this
       //     point that the mesh is nonconforming and parallel.  The FE space is
       //     considered 'cut' along hanging edges/faces, and also across
       //     processor boundaries.
+      tic_toc.Clear();
+      tic_toc.Start();
       a.Assemble();
 
       // 16. Create the parallel linear system: eliminate boundary conditions.
@@ -371,6 +384,8 @@ int main(int argc, char *argv[])
       cg.Mult(B, X);
       delete amg;
 
+      tic_toc.Stop();
+      cout << "Elapsed time <rank> <ms> " << myid << " " << tic_toc.RealTime() << "\n";
       // 18. Switch back to the host and extract the parallel grid function
       //     corresponding to the finite element approximation X. This is the
       //     local solution on each processor.
