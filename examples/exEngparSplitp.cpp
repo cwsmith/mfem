@@ -163,6 +163,11 @@ int* getPartition(Mesh& m, MPI_Comm comm, int rank, int splitFactor) {
    fprintf(stderr, "%d pnc_rebal 0.4\n", rank);
    agi::destroyGraph(graph);
 
+   //mfem wants all ranks to have the partition vector
+   MPI_Bcast(&local_elems, 1, MPI_INT, 0, MPI_COMM_WORLD);
+   if(rank) ptnVec = new int[local_elems];
+   MPI_Bcast(ptnVec, local_elems, MPI_INT, 0, MPI_COMM_WORLD);
+
    return ptnVec;
 }
 
