@@ -182,10 +182,13 @@ int main(int argc, char *argv[])
 
    // 2. Parse command-line options.
    const char *mesh_file = "../data/star.mesh";
+   const char *omesh_file = "";
    int order = 1;
    bool pa = false;
    const char *device_config = "cpu";
    bool visualization = true;
+   bool engpar = false;
+   int maxiter = 5;
 
    OptionsParser args(argc, argv);
    args.AddOption(&mesh_file, "-m", "--mesh",
@@ -199,6 +202,13 @@ int main(int argc, char *argv[])
    args.AddOption(&visualization, "-vis", "--visualization", "-no-vis",
                   "--no-visualization",
                   "Enable or disable GLVis visualization.");
+   args.AddOption(&omesh_file, "-om", "--outmesh",
+                  "Output mesh file name.");
+   args.AddOption(&engpar, "-eng", "--engpar", "-no-eng",
+                  "--no-engpar",
+                  "Enable or disable EnGPar partitioning.");
+   args.AddOption(&maxiter, "-i", "--iterations",
+                  "Maximum AMR iterations.");
    args.Parse();
    if (!args.Good())
    {
@@ -238,16 +248,14 @@ int main(int argc, char *argv[])
 
    // 6. Define a parallel mesh by partitioning the serial mesh.
    //    Once the parallel mesh is defined, the serial mesh can be deleted.
-   int* partition_vector = getPartition(*mesh,MPI_COMM_WORLD,myid,num_procs);
-   fprintf(stderr, "%d main 0.0\n", myid);
+   int* partition_vector = NULL;
+   if( engpar )
+     partition_vector = getPartition(*mesh,MPI_COMM_WORLD,myid,num_procs);
    ParMesh pmesh(MPI_COMM_WORLD, *mesh, partition_vector);
-   fprintf(stderr, "%d main 0.1\n", myid);
    delete mesh;
-   fprintf(stderr, "%d main 0.2\n", myid);
 
    MFEM_VERIFY(pmesh.bdr_attributes.Size() > 0,
                "Boundary attributes required in the mesh.");
-   fprintf(stderr, "%d main 0.3\n", myid);
    Array<int> ess_bdr(pmesh.bdr_attributes.Max());
    ess_bdr = 1;
 
@@ -319,8 +327,8 @@ int main(int argc, char *argv[])
 
    // 13. The main AMR loop. In each iteration we solve the problem on the
    //     current mesh, visualize the solution, and refine the mesh.
-   const int max_dofs = 500;
-   for (int it = 0; ; it++)
+   const int max_dofs = 100000;
+   for (int it = 0; it < maxiter; it++)
    {
       HYPRE_Int global_dofs = fespace.GlobalTrueVSize();
       if (myid == 0)
@@ -423,6 +431,12 @@ int main(int argc, char *argv[])
       //     changed.
       a.Update();
       b.Update();
+   }
+
+   std::string omesh_name(omesh_file);
+   if( omesh_name != "" ) {
+     ofgzstream omesh_stream(omesh_name.c_str(), "w");
+     pmesh.ParPrint(omesh_stream);
    }
 
    EnGPar_Finalize();
