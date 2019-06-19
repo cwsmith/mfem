@@ -370,7 +370,7 @@ int main(int argc, char *argv[])
         double maxt;
         MPI_Allreduce(&t,&maxt,1,MPI_DOUBLE,MPI_MAX,MPI_COMM_WORLD);
         if(!myid)
-          printf("Max elapsed GPU work time (ms) %f\n",maxt);
+          printf("Max elapsed GPU work time (seconds) %f\n",maxt);
       }
       // 18. Switch back to the host and extract the parallel grid function
       //     corresponding to the finite element approximation X. This is the
