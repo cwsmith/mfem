@@ -317,7 +317,7 @@ int main(int argc, char *argv[])
 
    // 13. The main AMR loop. In each iteration we solve the problem on the
    //     current mesh, visualize the solution, and refine the mesh.
-   const int max_dofs = 100000;
+   const int max_dofs = 1000000;
    for (int it = 0; it < maxiter; it++)
    {
       HYPRE_Int global_dofs = fespace.GlobalTrueVSize();
@@ -365,7 +365,13 @@ int main(int argc, char *argv[])
       delete amg;
 
       tic_toc.Stop();
-      cout << "Elapsed time <rank> <ms> " << myid << " " << tic_toc.RealTime() << "\n";
+      {
+        double t = tic_toc.RealTime();
+        double maxt;
+        MPI_Allreduce(&t,&maxt,1,MPI_DOUBLE,MPI_MAX,MPI_COMM_WORLD);
+        if(!myid)
+          printf("Max elapsed GPU work time (ms) %f\n",maxt);
+      }
       // 18. Switch back to the host and extract the parallel grid function
       //     corresponding to the finite element approximation X. This is the
       //     local solution on each processor.
@@ -413,7 +419,6 @@ int main(int argc, char *argv[])
       //     available only for nonconforming meshes.
       if (pmesh.Nonconforming())
       {
-         fprintf(stderr, "mesh is non-conforming\n");
          pmesh.Rebalance();
 
          // Update the space and the GridFunction. This time the update matrix
