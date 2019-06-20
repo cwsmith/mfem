@@ -179,6 +179,7 @@ int main(int argc, char *argv[])
    bool visualization = true;
    bool engpar = false;
    int maxiter = 5;
+   int gpusPerNode = 1;
 
    OptionsParser args(argc, argv);
    args.AddOption(&mesh_file, "-m", "--mesh",
@@ -199,6 +200,8 @@ int main(int argc, char *argv[])
                   "Enable or disable EnGPar partitioning.");
    args.AddOption(&maxiter, "-i", "--iterations",
                   "Maximum AMR iterations.");
+   args.AddOption(&gpusPerNode, "-gpn", "--gpusPerNode",
+                  "Number of GPUs per node.");
    args.Parse();
    if (!args.Good())
    {
@@ -216,7 +219,7 @@ int main(int argc, char *argv[])
 
    // 3. Enable hardware devices such as GPUs, and programming models such as
    //    CUDA, OCCA, RAJA and OpenMP based on command line options.
-   Device device(device_config);
+   Device device(device_config, myid%gpusPerNode);
    if (myid == 0) { device.Print(); }
 
    // 4. Read the (serial) mesh from the given mesh file on all processors.  We
