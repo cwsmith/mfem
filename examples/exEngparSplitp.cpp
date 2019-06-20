@@ -173,6 +173,7 @@ int main(int argc, char *argv[])
    // 2. Parse command-line options.
    const char *mesh_file = "../data/star.mesh";
    const char *omesh_file = "";
+   const char *vtkomesh_file = "";
    int order = 1;
    bool pa = false;
    const char *device_config = "cpu";
@@ -195,6 +196,8 @@ int main(int argc, char *argv[])
                   "Enable or disable GLVis visualization.");
    args.AddOption(&omesh_file, "-om", "--outmesh",
                   "Output mesh file name.");
+   args.AddOption(&vtkomesh_file, "-vtk", "--vtkoutmesh",
+                  "VTK output mesh file name.");
    args.AddOption(&engpar, "-eng", "--engpar", "-no-eng",
                   "--no-engpar",
                   "Enable or disable EnGPar partitioning.");
@@ -443,6 +446,16 @@ int main(int argc, char *argv[])
    if( omesh_name != "" ) {
      ofgzstream omesh_stream(omesh_name.c_str(), "w");
      pmesh.ParPrint(omesh_stream);
+   }
+   std::string vtkomesh_name(vtkomesh_file);
+   if( vtkomesh_name != "" ) {
+     std::stringstream ss;
+     ss << vtkomesh_name << myid << ".vtk";
+     std::string s = ss.str();
+     printf("writing vtk mesh as %s\n", s.c_str());
+     ofstream ostream(s.c_str());
+     ostream.precision(14);
+     pmesh.PrintVTK(ostream,0,1);
    }
 
    EnGPar_Finalize();
