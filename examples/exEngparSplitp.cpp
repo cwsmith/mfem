@@ -237,6 +237,9 @@ int main(int argc, char *argv[])
       mesh->UniformRefinement();
       mesh->SetCurvature(2);
    }
+   Array<int> ordering;
+   mesh->GetGeckoElementReordering(ordering);
+   mesh->ReorderElements(ordering);
    mesh->EnsureNCMesh();
 
    // 6. Define a parallel mesh by partitioning the serial mesh.
