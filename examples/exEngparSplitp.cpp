@@ -326,7 +326,7 @@ int main(int argc, char *argv[])
 
    // 13. The main AMR loop. In each iteration we solve the problem on the
    //     current mesh, visualize the solution, and refine the mesh.
-   const int max_dofs = 1000000;
+   const int max_dofs = 10000000;
    for (int it = 0; it < maxiter; it++)
    {
       HYPRE_Int global_dofs = fespace.GlobalTrueVSize();
