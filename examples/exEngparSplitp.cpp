@@ -244,15 +244,14 @@ int main(int argc, char *argv[])
       mesh->SetCurvature(2);
    }
 
-   for(int i=0; i<refiter; i++) {
-     mesh->UniformRefinement();
-   }
-
    Array<int> ordering;
    mesh->GetGeckoElementReordering(ordering);
    mesh->ReorderElements(ordering);
    mesh->EnsureNCMesh();
 
+   for(int i=0; i<refiter; i++) {
+     mesh->UniformRefinement();
+   }
 
    // 6. Define a parallel mesh by partitioning the serial mesh.
    //    Once the parallel mesh is defined, the serial mesh can be deleted.
