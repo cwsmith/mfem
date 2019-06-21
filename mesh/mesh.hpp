@@ -1000,7 +1000,7 @@ public:
    virtual void ReorientTetMesh();
 
    int *CartesianPartitioning(int nxyz[]);
-   int *GeneratePartitioning(int nparts, int part_method = 1);
+   int *GeneratePartitioning(int nparts, int part_method = 1, float tgtImb=1.05);
    void CheckPartitioning(int *partitioning);
 
    void CheckDisplacements(const Vector &displacements, double &tmax);

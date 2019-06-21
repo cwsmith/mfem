@@ -5013,7 +5013,7 @@ int *Mesh::CartesianPartitioning(int nxyz[])
    return partitioning;
 }
 
-int *Mesh::GeneratePartitioning(int nparts, int part_method)
+int *Mesh::GeneratePartitioning(int nparts, int part_method, float tgtImb)
 {
 #ifdef MFEM_USE_METIS
    int i, *partitioning;
@@ -5156,7 +5156,7 @@ int *Mesh::GeneratePartitioning(int nparts, int part_method)
                                    NULL,
                                    &mparts,
                                    NULL,
-                                   NULL,
+                                   &tgtImb,
                                    options,
                                    &edgecut,
                                    mpartitioning);
@@ -5193,7 +5193,7 @@ int *Mesh::GeneratePartitioning(int nparts, int part_method)
                                    NULL,
                                    &mparts,
                                    NULL,
-                                   NULL,
+                                   &tgtImb,
                                    options,
                                    &edgecut,
                                    mpartitioning);

@@ -65,7 +65,8 @@ void switchToOriginals(int split_factor, bool& isOriginal, MPI_Comm& newComm) {
   MPI_Comm_split(MPI_COMM_WORLD,group,groupRank,&newComm);
 }
 
-int* getPartition(Mesh& m, MPI_Comm comm, int rank, int splitFactor) {
+int* getPartition(Mesh& m, MPI_Comm comm, int rank, int splitFactor,
+    float tgtImb) {
    bool isOriginal = false;
    MPI_Comm newComm;
    switchToOriginals(splitFactor,isOriginal,newComm);
@@ -123,10 +124,10 @@ int* getPartition(Mesh& m, MPI_Comm comm, int rank, int splitFactor) {
      agi::checkValidity(graph);
    }
 
-   double tolerance = 1.05;
    agi::etype t = 0;
    engpar::Input* input_s =
-    engpar::createGlobalSplitInput(graph,newComm,MPI_COMM_WORLD,isOriginal,tolerance,t);
+     engpar::createGlobalSplitInput(graph,newComm,MPI_COMM_WORLD,
+                                     isOriginal,tgtImb,t);
 
    //Perform split
    if(isOriginal) {
@@ -179,6 +180,8 @@ int main(int argc, char *argv[])
    const char *device_config = "cpu";
    bool visualization = true;
    bool engpar = false;
+   int metisMethod = 0;
+   double tgtImb = 1.05;
    int maxiter = 5;
    int refiter = 0;
    int gpusPerNode = 1;
@@ -202,6 +205,10 @@ int main(int argc, char *argv[])
    args.AddOption(&engpar, "-eng", "--engpar", "-no-eng",
                   "--no-engpar",
                   "Enable or disable EnGPar partitioning.");
+   args.AddOption(&metisMethod, "-mm", "--metisMethod",
+                  "METIS partitioning method = [ 1 PartKWay | 2 PartVKway].");
+   args.AddOption(&tgtImb, "-t", "--targetImbalance",
+                  "Target partition imbalance; 1.05 requests a 5\% imbalance.");
    args.AddOption(&maxiter, "-i", "--iterations",
                   "Maximum AMR iterations.");
    args.AddOption(&refiter, "-r", "--refineiterations",
@@ -257,7 +264,9 @@ int main(int argc, char *argv[])
    //    Once the parallel mesh is defined, the serial mesh can be deleted.
    int* partition_vector = NULL;
    if( engpar )
-     partition_vector = getPartition(*mesh,MPI_COMM_WORLD,myid,num_procs);
+     partition_vector = getPartition(*mesh,MPI_COMM_WORLD,myid,num_procs,tgtImb);
+   if( metisMethod )
+     partition_vector = mesh->GeneratePartitioning(num_procs,metisMethod,tgtImb);
    ParMesh pmesh(MPI_COMM_WORLD, *mesh, partition_vector);
    delete mesh;
 
