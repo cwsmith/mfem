@@ -180,6 +180,7 @@ int main(int argc, char *argv[])
    bool visualization = true;
    bool engpar = false;
    int maxiter = 5;
+   int refiter = 0;
    int gpusPerNode = 1;
 
    OptionsParser args(argc, argv);
@@ -203,6 +204,8 @@ int main(int argc, char *argv[])
                   "Enable or disable EnGPar partitioning.");
    args.AddOption(&maxiter, "-i", "--iterations",
                   "Maximum AMR iterations.");
+   args.AddOption(&refiter, "-r", "--refineiterations",
+                  "Uniform refinement iterations.");
    args.AddOption(&gpusPerNode, "-gpn", "--gpusPerNode",
                   "Number of GPUs per node.");
    args.Parse();
@@ -240,10 +243,16 @@ int main(int argc, char *argv[])
       mesh->UniformRefinement();
       mesh->SetCurvature(2);
    }
+
+   for(int i=0; i<refiter; i++) {
+     mesh->UniformRefinement();
+   }
+
    Array<int> ordering;
    mesh->GetGeckoElementReordering(ordering);
    mesh->ReorderElements(ordering);
    mesh->EnsureNCMesh();
+
 
    // 6. Define a parallel mesh by partitioning the serial mesh.
    //    Once the parallel mesh is defined, the serial mesh can be deleted.
