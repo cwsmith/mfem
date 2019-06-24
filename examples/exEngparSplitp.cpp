@@ -154,6 +154,36 @@ int* getPartition(Mesh& m, MPI_Comm comm, int rank, int splitFactor,
    return ptnVec;
 }
 
+void writeIntElementField(const char* ptn_file, const int size, int* field) {
+  ofstream out(ptn_file, ios_base::out);
+  out << size << "\n";
+  for(int i=0; i<size; i++)
+    out << field[i] << "\n";
+  out.close();
+}
+
+int* readIntElementField(const char* ptn_file, const int expectedSz) {
+  ifstream in(ptn_file, ios_base::in);
+  vector<string> text;
+  string line;
+  std::stringstream buffer;
+  buffer << in.rdbuf();
+  in.close();
+  getline(buffer, line);
+  auto size = std::stoi(line);
+  if( expectedSz != size ) {
+    fprintf(stderr, "expected size %d != size %d ... exiting\n",
+            expectedSz, size);
+    exit(EXIT_FAILURE);
+  }
+  int* field = new int[size];
+  for(int i=0; i<size; i++) {
+    getline(buffer, line);
+    field[i] = std::stoi(line);
+  }
+  return field;
+}
+
 int main(int argc, char *argv[])
 {
    // 1. Initialize MPI.
@@ -175,6 +205,8 @@ int main(int argc, char *argv[])
    const char *mesh_file = "../data/star.mesh";
    const char *omesh_file = "";
    const char *vtkomesh_file = "";
+   const char *rPtn_file = "";
+   const char *wPtn_file = "";
    int order = 1;
    bool pa = false;
    const char *device_config = "cpu";
@@ -207,6 +239,10 @@ int main(int argc, char *argv[])
                   "Enable or disable EnGPar partitioning.");
    args.AddOption(&metisMethod, "-mm", "--metisMethod",
                   "METIS partitioning method = [ 1 PartKWay | 2 PartVKway].");
+   args.AddOption(&rPtn_file, "-rpv", "--readPtnVector",
+                  "Specify file containing the partition vector.");
+   args.AddOption(&wPtn_file, "-wpv", "--writePtnVector",
+                  "Specify file for writing partition vector.");
    args.AddOption(&tgtImb, "-t", "--targetImbalance",
                   "Target partition imbalance; 1.05 requests a 5\% imbalance.");
    args.AddOption(&maxiter, "-i", "--iterations",
@@ -262,13 +298,34 @@ int main(int argc, char *argv[])
 
    // 6. Define a parallel mesh by partitioning the serial mesh.
    //    Once the parallel mesh is defined, the serial mesh can be deleted.
+   tic_toc.Clear();
+   tic_toc.Start();
    int* partition_vector = NULL;
-   if( engpar )
+   if( engpar ) {
      partition_vector = getPartition(*mesh,MPI_COMM_WORLD,myid,num_procs,tgtImb);
-   if( metisMethod )
+   } else if( metisMethod ) {
      partition_vector = mesh->GeneratePartitioning(num_procs,metisMethod,tgtImb);
+   } else if( std::string(rPtn_file) != "" ) {
+     if(!myid)
+       printf("reading partition from \'%s\'\n",rPtn_file);
+     partition_vector = readIntElementField(rPtn_file,mesh->GetNE());
+   }
+   tic_toc.Stop();
+   auto t = tic_toc.RealTime();
+   if(!myid)
+     printf("partitioning time (seconds) %f\n",t);
+
+   if( std::string(wPtn_file) != "" && !myid )
+     writeIntElementField(wPtn_file,mesh->GetNE(),partition_vector);
+
+   tic_toc.Clear();
+   tic_toc.Start();
    ParMesh pmesh(MPI_COMM_WORLD, *mesh, partition_vector);
    delete mesh;
+   tic_toc.Stop();
+   t = tic_toc.RealTime();
+   if(!myid)
+     printf("ParMesh created in (seconds) %f\n",t);
 
    MFEM_VERIFY(pmesh.bdr_attributes.Size() > 0,
                "Boundary attributes required in the mesh.");
