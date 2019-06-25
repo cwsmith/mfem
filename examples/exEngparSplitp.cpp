@@ -184,6 +184,28 @@ int* readIntElementField(const char* ptn_file, const int expectedSz) {
   return field;
 }
 
+void getCut(ParMesh& m, int rank) {
+  auto ng = m.GetNGroups();
+  auto g = m.gtopo;
+  assert( ng == g.NGroups() );
+  auto nb = g.GetNumNeighbors();
+  long cutEnts[3] = {0,0,0};
+  for(int i=1; i<ng; i++) {
+    if( g.IAmMaster(i) ) {
+      cutEnts[0] += m.GroupNVertices(i);
+      cutEnts[1] += m.GroupNEdges(i);
+      cutEnts[2] += m.GroupNTriangles(i)+
+                   m.GroupNQuadrilaterals(i);
+    }
+  }
+  long totCutEnts[3] = {0,0,0};
+  MPI_Allreduce(cutEnts,&totCutEnts,3,MPI_LONG,MPI_SUM,MPI_COMM_WORLD);
+  if(!rank) {
+    printf("cut entities <vtx edge face> %8d %8d %8d\n",
+        totCutEnts[0], totCutEnts[1], totCutEnts[2]);
+  }
+}
+
 int main(int argc, char *argv[])
 {
    // 1. Initialize MPI.
@@ -326,6 +348,8 @@ int main(int argc, char *argv[])
    t = tic_toc.RealTime();
    if(!myid)
      printf("ParMesh created in (seconds) %f\n",t);
+
+   getCut(pmesh,myid);
 
    MFEM_VERIFY(pmesh.bdr_attributes.Size() > 0,
                "Boundary attributes required in the mesh.");
