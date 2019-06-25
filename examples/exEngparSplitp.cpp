@@ -201,7 +201,7 @@ void getCut(ParMesh& m, int rank) {
   long totCutEnts[3] = {0,0,0};
   MPI_Allreduce(cutEnts,&totCutEnts,3,MPI_LONG,MPI_SUM,MPI_COMM_WORLD);
   if(!rank) {
-    printf("cut entities <vtx edge face> %8d %8d %8d\n",
+    printf("cut entities <vtx edge face> %8ld %8ld %8ld\n",
         totCutEnts[0], totCutEnts[1], totCutEnts[2]);
   }
 }
