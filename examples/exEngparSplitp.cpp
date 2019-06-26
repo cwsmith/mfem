@@ -445,6 +445,7 @@ int main(int argc, char *argv[])
       //     point that the mesh is nonconforming and parallel.  The FE space is
       //     considered 'cut' along hanging edges/faces, and also across
       //     processor boundaries.
+      //MPI_Pcontrol(1); //start mpip profiling
       tic_toc.Clear();
       tic_toc.Start();
       a.Assemble();
@@ -472,6 +473,8 @@ int main(int argc, char *argv[])
       delete amg;
 
       tic_toc.Stop();
+
+      //MPI_Pcontrol(0); //stop mpip profiling
       {
         double t = tic_toc.RealTime();
         double maxt;
