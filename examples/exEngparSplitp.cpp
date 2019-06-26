@@ -239,6 +239,7 @@ int main(int argc, char *argv[])
    int maxiter = 5;
    int refiter = 0;
    int gpusPerNode = 1;
+   bool reorder = true;
 
    OptionsParser args(argc, argv);
    args.AddOption(&mesh_file, "-m", "--mesh",
@@ -259,6 +260,9 @@ int main(int argc, char *argv[])
    args.AddOption(&engpar, "-eng", "--engpar", "-no-eng",
                   "--no-engpar",
                   "Enable or disable EnGPar partitioning.");
+   args.AddOption(&reorder, "-re", "--reorder",
+                  "-no-re", "--no-reorder",
+                  "Enable Gecko reordering.");
    args.AddOption(&metisMethod, "-mm", "--metisMethod",
                   "METIS partitioning method = [ 1 PartKWay | 2 PartVKway].");
    args.AddOption(&rPtn_file, "-rpv", "--readPtnVector",
@@ -309,9 +313,12 @@ int main(int argc, char *argv[])
       mesh->SetCurvature(2);
    }
 
-   Array<int> ordering;
-   mesh->GetGeckoElementReordering(ordering);
-   mesh->ReorderElements(ordering);
+   if( reorder ) {
+     if( !myid ) printf("reordering with Gecko\n");
+     Array<int> ordering;
+     mesh->GetGeckoElementReordering(ordering);
+     mesh->ReorderElements(ordering);
+   }
    mesh->EnsureNCMesh();
 
    for(int i=0; i<refiter; i++) {
