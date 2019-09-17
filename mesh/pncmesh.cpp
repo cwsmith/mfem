@@ -958,7 +958,6 @@ void ParNCMesh::GetConformingSharedStructures(ParMesh &pmesh)
       entity_conf_group[ent].DeleteAll();
       entity_elem_local[ent].DeleteAll();
    }
-   leaf_glob_order.DeleteAll();
 }
 
 bool ParNCMesh::compare_ranks_indices(const Element* a, const Element* b)

@@ -356,6 +356,18 @@ int main(int argc, char *argv[])
    if(!myid)
      printf("ParMesh created in (seconds) %f\n",t);
 
+   {
+     const auto nlocal = pmesh.GetNE();
+     const auto nghosts = pmesh.pncmesh->GetNGhostElements();
+     printf("%d numLocal %d numGhosts %d\n", myid, nlocal, nghosts);
+     for(int i=0; i<nghosts; i++) {
+        auto ghostGid = pmesh.pncmesh->GetLeafGlobId(i);
+        auto ghostRank = pmesh.pncmesh->ElementRank(i);
+        if(i<10)
+          printf("%d ghostLid ghostGid ghostRank %5d %5ld %5d\n", myid, i, ghostGid, ghostRank);
+     }
+   }
+
    getCut(pmesh,myid);
 
    MFEM_VERIFY(pmesh.bdr_attributes.Size() > 0,

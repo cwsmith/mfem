@@ -187,6 +187,10 @@ public:
       return elements[leaf_elements[index]].rank;
    }
 
+   long GetLeafGlobId(int lindex) const
+   {
+      return leaf_glob_order[lindex];
+   }
 
    // utility
 
