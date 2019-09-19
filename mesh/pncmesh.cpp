@@ -2727,37 +2727,35 @@ void ParNCMesh::GetElementVerts(Element& el, Array<int>& indices)
 
    for (int j = 0; j < gi.nv; j++)
       indices.Append(node[j]);
-
-   for (int j = 0; j < gi.ne; j++)
-   {
-      const int* ev = gi.edges[j];
-      CollectEdgeVertices(node[ev[0]], node[ev[1]], indices);
-   }
-
-   if (Dim >= 3)
-   {
-      for (int j = 0; j < gi.nf; j++)
-      {
-         const int* fv = gi.faces[j];
-         CollectFaceVertices(node[fv[0]], node[fv[1]],
-            node[fv[2]], node[fv[3]], indices);
-      }
-   }
-
-   indices.Sort();
-   indices.Unique();
 }
 
 Table* ParNCMesh::GetVertexToElementTable(int rank)
 {
-   const int nrows = NVertices + NGhostVertices;
+   // count local and ghosted conforming vertices
+   Array<int> vertices;
+   Array<int> indices;
+   indices.Reserve(128);
+   for (int i = 0; i < leaf_elements.Size(); i++)
+   {
+      int elem = leaf_elements[i];
+      Element &el = elements[elem];
+      MFEM_ASSERT(!el.ref_type, "not a leaf element.");
+      GetElementVerts(el, indices);
+      if(!rank) printf("%d elm %d numVerts %d\n", rank, i, indices.Size());
+      vertices.Append(indices);
+   }
+   vertices.Sort();
+   vertices.Unique();
+   if(!rank) vertices.Print();
+
+   const int nrows = vertices.Size();
    int* off = new int[nrows + 1];
    for (int i = 0; i < nrows+1; i++)
       off[i] = 0;
 
-   // count vertices coinciding with each element, including hanging vertices
-   Array<int> indices;
-   indices.Reserve(128);
+   if(!rank) printf("%d numConformingVerts %d\n", rank, nrows);
+
+   // compute the degree of each conforming vertex
    for (int i = 0; i < leaf_elements.Size(); i++)
    {
       int elem = leaf_elements[i];
@@ -2767,6 +2765,8 @@ Table* ParNCMesh::GetVertexToElementTable(int rank)
       for (int j = 0; j < indices.Size(); j++)
       {
          auto vtx = indices[j];
+         if(!(vtx>=0 && vtx<nrows))
+           if(!rank) printf("%d vtx %d\n", rank, vtx);
          MFEM_ASSERT(vtx>=0 && vtx<nrows, "vertex id out of range");
          off[vtx]++;
       }
