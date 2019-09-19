@@ -362,6 +362,13 @@ int main(int argc, char *argv[])
      printf("ParMesh created in (seconds) %f\n",t);
 
    {
+
+     const int order = 1;
+     const int dim = pmesh.Dimension();
+     FiniteElementCollection* fec = new H1_FECollection(order, dim);
+     ParFiniteElementSpace *fespace =
+       new ParFiniteElementSpace(&pmesh, fec, dim, Ordering::byVDIM);
+
      auto pncm = pmesh.pncmesh;
      const auto nlverts = pncm->GetNVertices();
      const auto ngverts = pncm->GetNGhostVertices();
@@ -376,8 +383,15 @@ int main(int argc, char *argv[])
      }
      auto vtxToElement = pmesh.pncmesh->GetVertexToElementTable(myid);
      if(!myid) vtxToElement->Print();
+     for(int i = 0; i< vtxToElement->Size(); i++) {
+        auto edgeid = fespace->GetGlobalTDofNumber(i);
+        printf("%3d globvtx %3d\n", myid, edgeid);
+     }
+
      MPI_Barrier(MPI_COMM_WORLD);
      printf("%d done\n", myid);
+     delete fespace;
+     delete fec;
    }
 
    return 0;
