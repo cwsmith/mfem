@@ -144,6 +144,8 @@ public:
        derefinements may have to be skipped to preserve mesh consistency. */
    virtual void Derefine(const Array<int> &derefs);
 
+   /** Conforming and non-conforming vertices to local and ghost elements */
+   Table* GetVertexToElementTable();
 
    // master/slave lists
 
@@ -491,6 +493,7 @@ protected: // implementation
    virtual int GetNumGhostElements() const { return 0; }
    virtual int GetNumGhostVertices() const { return 0; }
 
+   void GetElementVerts(Element& el, Array<int>& indices);
 
    // refinement/derefinement
 
@@ -628,7 +631,8 @@ protected: // implementation
    void CollectEdgeVertices(int v0, int v1, Array<int> &indices);
    void CollectFaceVertices(int v0, int v1, int v2, int v3,
                             Array<int> &indices);
-   void BuildElementToVertexTable();
+   /* Only contains the non-conforming vertices */
+   void BuildElementToVertexTable(); 
 
    void UpdateElementToVertexTable()
    {
