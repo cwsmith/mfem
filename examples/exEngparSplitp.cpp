@@ -376,9 +376,13 @@ int main(int argc, char *argv[])
         auto ghostRank = pmesh.pncmesh->ElementRank(i);
         printf("%d ghostLid ghostGid ghostRank %5d %5ld %5d\n", myid, i, ghostGid, ghostRank);
      }
-     auto vtxToElement = pmesh.pncmesh->GetVertexToElementTable();
-     if(!myid)
+     if(!myid) {
+       auto vtxToElement = pmesh.pncmesh->GetVertexToElementTable(myid);
        vtxToElement->Print();
+     }
+     printf("%d before barrier\n", myid);
+     MPI_Barrier(MPI_COMM_WORLD);
+     printf("%d done\n", myid);
    }
 
    return 0;
