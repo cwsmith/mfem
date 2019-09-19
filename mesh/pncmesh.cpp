@@ -2718,6 +2718,123 @@ void ParNCMesh::RebalanceDofMessage::Decode(int)
    }
 }
 
+void ParNCMesh::GetElementVerts(Element& el, Array<int>& indices)
+{
+   GeomInfo& gi = GI[(int) el.geom];
+   int* node = el.node;
+
+   indices.SetSize(0);
+
+   for (int j = 0; j < gi.nv; j++)
+      indices.Append(node[j]);
+
+   for (int j = 0; j < gi.ne; j++)
+   {
+      const int* ev = gi.edges[j];
+      CollectEdgeVertices(node[ev[0]], node[ev[1]], indices);
+   }
+
+   if (Dim >= 3)
+   {
+      for (int j = 0; j < gi.nf; j++)
+      {
+         const int* fv = gi.faces[j];
+         CollectFaceVertices(node[fv[0]], node[fv[1]],
+            node[fv[2]], node[fv[3]], indices);
+      }
+   }
+
+   indices.Sort();
+   indices.Unique();
+}
+
+Table* ParNCMesh::GetVertexToElementTable(int rank)
+{
+   const int nrows = NVertices + NGhostVertices;
+   if(!rank) printf("%d verts %3d\n", rank, nrows);
+   int* off = new int[nrows + 1];
+   for (int i = 0; i < nrows+1; i++)
+      off[i] = 0;
+
+   Array<int> vertices;
+   // count vertices coinciding with each element, including hanging vertices
+   Array<int> indices;
+   indices.Reserve(128);
+   for (int i = 0; i < leaf_elements.Size(); i++)
+   {
+      int elem = leaf_elements[i];
+      Element &el = elements[elem];
+      MFEM_ASSERT(!el.ref_type, "not a leaf element.");
+      GetElementVerts(el, indices);
+      std::stringstream ss;
+      ss << "element vtx";
+      for (int j = 0; j < indices.Size(); j++)
+      {
+         auto vtx = indices[j];
+         off[vtx]++;
+         ss << " " << vtx;
+      }
+      if(!rank) std::cout << ss.str() << "\n";
+      vertices.Append(indices);
+      vertices.Sort();
+      vertices.Unique();
+   }
+   vertices.Print();
+
+   // compute the offsets (prefix sum) from the degree
+   auto sum = 0;
+   for (int i = 0; i < nrows; i++)
+   {
+      auto prevSum = sum;
+      sum += off[i];
+      off[i] = prevSum;
+      if(!rank) printf("deg[%3d] %3d off[%3d] %3d\n", i, (sum-prevSum), i, off[i]);
+   }
+   off[nrows] = sum;
+   if(!rank) printf("final sum %d\n", sum);
+
+   int* elmsOfVtx = new int[sum];
+   // keep a counter of the next empty slot for each vtx
+   int* vtxNextEmpty = new int[nrows];
+   for (int i = 0; i < nrows; i++)
+      vtxNextEmpty[i] = off[i];
+   
+   if(!rank) printf("0.1\n");
+   // fill in the elmsOfVtx array
+   for (int i = 0; i < leaf_elements.Size(); i++)
+   {
+      if(!rank) printf("0.11 i %3d\n", i);
+      int elem = leaf_elements[i];
+      Element &el = elements[elem];
+      MFEM_ASSERT(!el.ref_type, "not a leaf element.");
+      GetElementVerts(el, indices);
+      if(!rank) printf("0.12 i %3d indices.size() %3d\n", i, indices.Size());
+      for (int j = 0; j < indices.Size(); j++)
+      {
+         if(!rank) printf("0.13 i %3d j %3d\n", i, j);
+         auto vtx = indices[j];
+         if(!rank) printf("0.14 i %3d j %3d vtx %3d\n", i, j, vtx);
+         MFEM_ASSERT(vtx>=0 && vtx<nrows, "vtx idx out of range");
+         auto idx = (vtxNextEmpty[vtx])++;
+         if(!rank) printf("0.15 i %3d j %3d vtx %3d idx %3d\n", i, j, vtx, idx);
+         MFEM_ASSERT(idx>=0 && idx<sum, "elmsOfVtx idx out of range");
+         elmsOfVtx[idx] = i;
+         if(!rank) printf("0.16 i %3d j %3d\n", i, j);
+      }
+   }
+
+   if(!rank) printf("0.2\n");
+
+   Table* v2e = new Table();
+   if(!rank) printf("0.3\n");
+   v2e->SetIJ(off, elmsOfVtx, nrows);
+   if(!rank) printf("0.4\n");
+   //delete off and elmsOfVtx ?
+   delete [] vtxNextEmpty;
+   if(!rank) printf("0.5\n");
+   return v2e;
+}
+
 
 //// Utility ///////////////////////////////////////////////////////////////////
 

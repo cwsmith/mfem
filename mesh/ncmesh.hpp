@@ -144,9 +144,6 @@ public:
        derefinements may have to be skipped to preserve mesh consistency. */
    virtual void Derefine(const Array<int> &derefs);
 
-   /** Conforming and non-conforming vertices to local and ghost elements */
-   Table* GetVertexToElementTable();
-
    // master/slave lists
 
    /// Identifies a vertex/edge/face in both Mesh and NCMesh.
@@ -493,7 +490,6 @@ protected: // implementation
    virtual int GetNumGhostElements() const { return 0; }
    virtual int GetNumGhostVertices() const { return 0; }
 
-   void GetElementVerts(Element& el, Array<int>& indices);
 
    // refinement/derefinement
 

@@ -223,6 +223,9 @@ public:
                                    Array<int> &bdr_vertices,
                                    Array<int> &bdr_edges);
 
+   /** Conforming and non-conforming vertices to local and ghost elements */
+   Table* GetVertexToElementTable(int rank);
+
    /// Save memory by releasing all non-essential and cached data.
    virtual void Trim();
 
@@ -317,6 +320,8 @@ protected: // implementation
    virtual void BuildFaceList();
    virtual void BuildEdgeList();
    virtual void BuildVertexList();
+
+   void GetElementVerts(Element& el, Array<int>& indices);
 
    virtual void ElementSharesFace(int elem, int local, int face);
    virtual void ElementSharesEdge(int elem, int local, int enode);
