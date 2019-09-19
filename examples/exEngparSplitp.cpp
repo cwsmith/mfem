@@ -361,26 +361,21 @@ int main(int argc, char *argv[])
    if(!myid)
      printf("ParMesh created in (seconds) %f\n",t);
 
-   //for (i = 0; i < NumOfElements; i++) {
-   //  elements[i]->SetAttribute(attr);
-   //}
-
    {
-     const auto nverts = pmesh.pncmesh->GetNVertices();
-     const auto nlocal = pmesh.GetNE();
-     const auto nghosts = pmesh.pncmesh->GetNGhostElements();
-     printf("%d numLocalElms %d numGhostsElms %d numVerts %d\n",
-       myid, nlocal, nghosts, nverts);
-     for(int i=0; i<nghosts; i++) {
+     auto pncm = pmesh.pncmesh;
+     const auto nlverts = pncm->GetNVertices();
+     const auto ngverts = pncm->GetNGhostVertices();
+     const auto nlelms = pncm->GetNElements();
+     const auto ngelms = pncm->GetNGhostElements();
+     printf("%d numLocalElms %d numGhostsElms %d numLocalVerts %d numGhostVerts %d\n",
+       myid, nlelms, ngelms, nlverts, ngverts);
+     for(int i=0; i<ngelms; i++) {
         auto ghostGid = pmesh.pncmesh->GetLeafGlobId(i);
         auto ghostRank = pmesh.pncmesh->ElementRank(i);
         printf("%d ghostLid ghostGid ghostRank %5d %5ld %5d\n", myid, i, ghostGid, ghostRank);
      }
-     if(!myid) {
-       auto vtxToElement = pmesh.pncmesh->GetVertexToElementTable(myid);
-       vtxToElement->Print();
-     }
-     printf("%d before barrier\n", myid);
+     auto vtxToElement = pmesh.pncmesh->GetVertexToElementTable(myid);
+     if(!myid) vtxToElement->Print();
      MPI_Barrier(MPI_COMM_WORLD);
      printf("%d done\n", myid);
    }
