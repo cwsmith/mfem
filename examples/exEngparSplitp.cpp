@@ -42,6 +42,7 @@
 #include <fstream>
 #include <iostream>
 #include <map>
+#include <set>
 #include <chrono>
 #include <thread>
 
@@ -303,6 +304,10 @@ int main(int argc, char *argv[])
    Mesh *mesh = new Mesh(mesh_file, 1, 1);
    int dim = mesh->Dimension();
    int sdim = mesh->SpaceDimension();
+   std::string meshType = mesh->Nonconforming() ? "non-conforming" : "conforming";
+   if( !myid )
+     fprintf(stderr, "serial %s mesh vtx elms %d %d\n",
+       meshType.c_str(), mesh->GetNV(), mesh->GetNE());
 
    // 5. Refine the serial mesh on all processors to increase the resolution.
    //    Also project a NURBS mesh to a piecewise-quadratic curved mesh. Make
@@ -356,17 +361,27 @@ int main(int argc, char *argv[])
    if(!myid)
      printf("ParMesh created in (seconds) %f\n",t);
 
+   //for (i = 0; i < NumOfElements; i++) {
+   //  elements[i]->SetAttribute(attr);
+   //}
+
    {
+     const auto nverts = pmesh.pncmesh->GetNVertices();
      const auto nlocal = pmesh.GetNE();
      const auto nghosts = pmesh.pncmesh->GetNGhostElements();
-     printf("%d numLocal %d numGhosts %d\n", myid, nlocal, nghosts);
+     printf("%d numLocalElms %d numGhostsElms %d numVerts %d\n",
+       myid, nlocal, nghosts, nverts);
      for(int i=0; i<nghosts; i++) {
         auto ghostGid = pmesh.pncmesh->GetLeafGlobId(i);
         auto ghostRank = pmesh.pncmesh->ElementRank(i);
-        if(i<10)
-          printf("%d ghostLid ghostGid ghostRank %5d %5ld %5d\n", myid, i, ghostGid, ghostRank);
+        printf("%d ghostLid ghostGid ghostRank %5d %5ld %5d\n", myid, i, ghostGid, ghostRank);
      }
+     auto vtxToElement = pmesh.pncmesh->GetVertexToElementTable();
+     if(!myid)
+       vtxToElement->Print();
    }
+
+   return 0;
 
    getCut(pmesh,myid);
 
