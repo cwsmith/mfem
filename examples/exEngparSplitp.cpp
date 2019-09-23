@@ -397,8 +397,17 @@ int main(int argc, char *argv[])
      for(int i = 0; i< vtxToElm->Size(); i++) {
         gEdges[i] = fespace->GetGlobalTDofNumber(vtxIds[i]);
         gEdgeDegrees[i] = vtxToElm->RowSize(i);
-        printf("%3d globvtx %3d deg %3d\n", gEdges[i], gEdgeDegrees[i]);
+        printf("%3d globvtx %3ld deg %3d\n", myid, gEdges[i], gEdgeDegrees[i]);
      }
+
+     std::vector<agi::gid_t> gVerts(nlelms);
+     for (int i = 0; i < nlelms; i++) {
+       gVerts[i] = i;
+     }
+
+     std::vector<agi::wgt_t> ignored;
+     agi::Ngraph* graph = agi::createEmptyGraph();
+     graph->constructVerts(true,gVerts,ignored);
 
      std::unordered_map<agi::gid_t,agi::part_t> ghost_owners;
 
@@ -415,7 +424,7 @@ int main(int argc, char *argv[])
           const auto globElmId = pmesh.pncmesh->GetLeafGlobId(elm);
           gEdgePins.push_back(globElmId);
           pincount++;
-          if( elm > nlems ) {
+          if( elm > nlelms ) {
             ghost_owners[globElmId] = elmRank;
             assert(elmRank!=myid);
           }
