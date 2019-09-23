@@ -2729,10 +2729,9 @@ void ParNCMesh::GetElementVerts(Element& el, Array<int>& indices)
       indices.Append(node[j]);
 }
 
-Table* ParNCMesh::GetVertexToElementTable(int rank)
+Table* ParNCMesh::GetVertexToElementTable(int rank, Array<int>& vtxIds)
 {
    // count local and ghosted conforming vertices
-   Array<int> vertices;
    Array<int> indices;
    indices.Reserve(128);
    for (int i = 0; i < leaf_elements.Size(); i++)
@@ -2742,13 +2741,16 @@ Table* ParNCMesh::GetVertexToElementTable(int rank)
       MFEM_ASSERT(!el.ref_type, "not a leaf element.");
       GetElementVerts(el, indices);
       if(!rank) printf("%d elm %d numVerts %d\n", rank, i, indices.Size());
-      vertices.Append(indices);
+      vtxIds.Append(indices);
    }
-   vertices.Sort();
-   vertices.Unique();
-   if(!rank) vertices.Print();
+   vtxIds.Sort();
+   vtxIds.Unique();
+   if(!rank) vtxIds.Print();
+   std::map<int,int> idToIdx;
+   for (int i=0; i<vtxIds.Size(); i++)
+      idToIdx[vtxIds[i]] = i;
 
-   const int nrows = vertices.Size();
+   const int nrows = vtxIds.Size();
    int* off = new int[nrows + 1];
    for (int i = 0; i < nrows+1; i++)
       off[i] = 0;
@@ -2764,7 +2766,7 @@ Table* ParNCMesh::GetVertexToElementTable(int rank)
       GetElementVerts(el, indices);
       for (int j = 0; j < indices.Size(); j++)
       {
-         auto vtx = indices[j];
+         auto vtx = idToIdx.at(indices[j]);
          if(!(vtx>=0 && vtx<nrows))
            if(!rank) printf("%d vtx %d\n", rank, vtx);
          MFEM_ASSERT(vtx>=0 && vtx<nrows, "vertex id out of range");
@@ -2797,7 +2799,7 @@ Table* ParNCMesh::GetVertexToElementTable(int rank)
       GetElementVerts(el, indices);
       for (int j = 0; j < indices.Size(); j++)
       {
-         auto vtx = indices[j];
+         auto vtx = idToIdx.at(indices[j]);
          MFEM_ASSERT(vtx>=0 && vtx<nrows, "vtx idx out of range");
          auto idx = (vtxNextEmpty[vtx])++;
          MFEM_ASSERT(idx>=0 && idx<sum, "elmsOfVtx idx out of range");

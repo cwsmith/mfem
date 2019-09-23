@@ -362,7 +362,14 @@ int main(int argc, char *argv[])
      printf("ParMesh created in (seconds) %f\n",t);
 
    {
+      ostringstream mesh_name;
+      mesh_name << "mesh." << setfill('0') << setw(6) << myid;
+      ofstream mesh_ofs(mesh_name.str().c_str());
+      mesh_ofs.precision(8);
+      pmesh.Print(mesh_ofs);
+   }
 
+   {
      const int order = 1;
      const int dim = pmesh.Dimension();
      FiniteElementCollection* fec = new H1_FECollection(order, dim);
@@ -377,16 +384,48 @@ int main(int argc, char *argv[])
      printf("%d numLocalElms %d numGhostsElms %d numLocalVerts %d numGhostVerts %d\n",
        myid, nlelms, ngelms, nlverts, ngverts);
      for(int i=0; i<ngelms; i++) {
-        auto ghostGid = pmesh.pncmesh->GetLeafGlobId(i);
+        auto ghostGid = pmesh.pncmesh->GetLeafGlobId(i+nlelms);
         auto ghostRank = pmesh.pncmesh->ElementRank(i);
         printf("%d ghostLid ghostGid ghostRank %5d %5ld %5d\n", myid, i, ghostGid, ghostRank);
      }
-     auto vtxToElement = pmesh.pncmesh->GetVertexToElementTable(myid);
-     if(!myid) vtxToElement->Print();
-     for(int i = 0; i< vtxToElement->Size(); i++) {
-        auto edgeid = fespace->GetGlobalTDofNumber(i);
-        printf("%3d globvtx %3d\n", myid, edgeid);
+     Array<int> vtxIds;
+     auto vtxToElm = pmesh.pncmesh->GetVertexToElementTable(myid,vtxIds);
+     if(!myid) vtxToElm->Print();
+     auto m_nverts = vtxToElm->Size();
+     std::vector<agi::gid_t> gEdges(m_nverts);
+     std::vector<agi::lid_t> gEdgeDegrees(m_nverts);
+     for(int i = 0; i< vtxToElm->Size(); i++) {
+        gEdges[i] = fespace->GetGlobalTDofNumber(vtxIds[i]);
+        gEdgeDegrees[i] = vtxToElm->RowSize(i);
+        printf("%3d globvtx %3d deg %3d\n", gEdges[i], gEdgeDegrees[i]);
      }
+
+     std::unordered_map<agi::gid_t,agi::part_t> ghost_owners;
+
+     const auto numPins = vtxToElm->Size_of_connections();
+     std::vector<agi::gid_t> gEdgePins;
+     gEdgePins.reserve(numPins);
+     auto pincount = 0;
+     for(int i = 0; i < vtxToElm->Size(); i++) {
+        mfem::Array<int> pins;
+        vtxToElm->GetRow(i,pins);
+        for(int j=0; j<pins.Size(); j++) {
+          const auto elm = pins[j];
+          const auto elmRank = pmesh.pncmesh->ElementRank(elm);
+          const auto globElmId = pmesh.pncmesh->GetLeafGlobId(elm);
+          gEdgePins.push_back(globElmId);
+          pincount++;
+          if( elm > nlems ) {
+            ghost_owners[globElmId] = elmRank;
+            assert(elmRank!=myid);
+          }
+        }
+     }
+
+     assert(pincount == gEdgePins.size());
+     graph->constructEdges(gEdges,gEdgeDegrees,gEdgePins,ignored);
+     graph->constructGhosts(ghost_owners);
+     agi::checkValidity(graph);
 
      MPI_Barrier(MPI_COMM_WORLD);
      printf("%d done\n", myid);

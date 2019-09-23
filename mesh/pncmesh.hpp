@@ -224,7 +224,7 @@ public:
                                    Array<int> &bdr_edges);
 
    /** Conforming and non-conforming vertices to local and ghost elements */
-   Table* GetVertexToElementTable(int rank);
+   Table* GetVertexToElementTable(int rank, Array<int>& vtxIds);
 
    /// Save memory by releasing all non-essential and cached data.
    virtual void Trim();
