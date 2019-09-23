@@ -567,6 +567,16 @@ int main(int argc, char *argv[])
         MPI_Allreduce(&t,&maxt,1,MPI_DOUBLE,MPI_MAX,MPI_COMM_WORLD);
         if(!myid)
           printf("Max elapsed GPU work time (seconds) %f\n",maxt);
+        double* allT = NULL;
+        if(!myid)
+          allT = new double[num_procs];
+        MPI_Gather(&t,1,MPI_DOUBLE,allT,1,MPI_DOUBLE,0,MPI_COMM_WORLD);
+        if(!myid) {
+          fprintf(stderr,"<rank> <GPU work time>\n");
+          for(int i=0; i<num_procs; i++)
+            fprintf(stderr,"%4d %6f\n", i, allT[i]);
+        }
+        MPI_Barrier(MPI_COMM_WORLD);
       }
       // 18. Switch back to the host and extract the parallel grid function
       //     corresponding to the finite element approximation X. This is the
